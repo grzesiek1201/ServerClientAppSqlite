@@ -12,19 +12,21 @@ class DbBase:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.close_connection()
+        self.db_server_close()
 
     def connect(self):
-        try:
-            self.connection = sqlite3.connect(self.db_name)
-            self.connection.execute("PRAGMA foreign_keys = 1")
-            self.connection.row_factory = sqlite3.Row
-            self.connected = True
-            print("Connected to SQLite database.")
-        except sqlite3.Error as e:
-            print(f"Error while connecting to SQLite: {e}")
-            self.connection = None
+        if not self.connected or (self.connection and self.connection.closed):
+            try:
+                self.connection = sqlite3.connect(self.db_name)
+                self.connection.execute("PRAGMA foreign_keys = 1")
+                self.connection.row_factory = sqlite3.Row
+                self.connected = True
+                print("Connected to SQLite database.")
+            except sqlite3.Error as e:
+                print(f"Error while connecting to SQLite: {e}")
+                self.connection = None
 
+        return self.connection
     def close_connection(self):
         if self.connected:
             self.connection.close()
@@ -41,8 +43,9 @@ class DbBase:
             self.connection.commit()
             return cursor
         except sqlite3.Error as e:
-            print("Error executing SQL query:", e)
-            raise
+            print(f"Error executing SQL query: {e}")
+            raise e
+
 
     def db_server_start(self):
         try:
@@ -54,18 +57,22 @@ class DbBase:
 
     def register_user(self, username, password):
         try:
-            with self.connection.cursor() as cursor:
-                sql = "INSERT INTO UsersBase (username, password) VALUES (?, ?)"
-                params = (username, password)
-                cursor.execute(sql, params)
-            self.connection.commit()
-            return "Registration successful."
+            self.connection = sqlite3.connect(self.db_name)
+            sql = "INSERT INTO UsersBase (username, password) VALUES (?, ?)"
+            params = (username, password)
+            cursor = self.execute_sql(sql, params)
+            if cursor:
+                self.connection.commit()
+                return "Registration successful."
+            else:
+                return "Failed to register user."
         except sqlite3.Error as e:
             print("Error registering user:", e)
             raise e
 
     def authenticate_user(self, username, password):
         try:
+            self.connection = sqlite3.connect(self.db_name)
             sql = "SELECT role FROM UsersBase WHERE username = ? AND password = ?"
             params = (username, password)
             cursor = self.execute_sql(sql, params)
@@ -80,6 +87,7 @@ class DbBase:
 
     def get_user_role(self, username):
         try:
+            self.connection = sqlite3.connect(self.db_name)
             sql = "SELECT role FROM UsersBase WHERE username = %s"
             params = (username,)
             with self.connection.cursor() as cursor:
@@ -91,6 +99,7 @@ class DbBase:
 
     def delete_user(self, username):
         try:
+            self.connection = sqlite3.connect(self.db_name)
             sql = "DELETE FROM UsersBase WHERE username = %s"
             params = (username,)
             self.execute_sql(sql, params)
@@ -100,6 +109,7 @@ class DbBase:
 
     def send_message(self, sender, recipient, message):
         try:
+            self.connection = sqlite3.connect(self.db_name)
             sql = "INSERT INTO UsersMessages (sender, recipient, message) VALUES (%s, %s, %s)"
             params = (sender, recipient, message)
             self.execute_sql(sql, params)
@@ -110,6 +120,7 @@ class DbBase:
 
     def read_messages(self, username):
         try:
+            self.connection = sqlite3.connect(self.db_name)
             sql = "SELECT sender, message FROM UsersMessages WHERE recipient = %s"
             params = (username,)
             cursor = self.connection.cursor()
@@ -123,6 +134,7 @@ class DbBase:
 
     def show_all_messages(self, recipient):
         try:
+            self.connection = sqlite3.connect(self.db_name)
             sql = "SELECT sender, message FROM UsersMessages WHERE recipient = %s"
             params = (recipient,)
             with self.connection.cursor() as cursor:
@@ -134,6 +146,7 @@ class DbBase:
 
     def show_all_users(self):
         try:
+            self.connection = sqlite3.connect(self.db_name)
             sql = "SELECT username, role FROM UsersBase"
             with self.connection.cursor() as cursor:
                 cursor.execute(sql)
@@ -148,6 +161,6 @@ class DbBase:
 
 
 if __name__ == "__main__":
-    db_name = "sqlite_db.db"
+    db_name = r"C:\Users\gzywi\PycharmProjects\ServerClientApp\sqlite_db.db"
     with DbBase(db_name) as db:
         db.db_server_start()
