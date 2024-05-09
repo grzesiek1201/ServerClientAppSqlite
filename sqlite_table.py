@@ -88,7 +88,7 @@ class DbBase:
     def get_user_role(self, username):
         try:
             self.connection = sqlite3.connect(self.db_name)
-            sql = "SELECT role FROM UsersBase WHERE username = %s"
+            sql = "SELECT role FROM UsersBase WHERE username = ?"
             params = (username,)
             with self.connection.cursor() as cursor:
                 cursor.execute(sql, params)
@@ -100,7 +100,7 @@ class DbBase:
     def delete_user(self, username):
         try:
             self.connection = sqlite3.connect(self.db_name)
-            sql = "DELETE FROM UsersBase WHERE username = %s"
+            sql = "DELETE FROM UsersBase WHERE username = ?"
             params = (username,)
             self.execute_sql(sql, params)
         except sqlite3.Error as e:
@@ -110,7 +110,7 @@ class DbBase:
     def send_message(self, sender, recipient, message):
         try:
             self.connection = sqlite3.connect(self.db_name)
-            sql = "INSERT INTO UsersMessages (sender, recipient, message) VALUES (%s, %s, %s)"
+            sql = "INSERT INTO UsersMessages (sender, recipient, message) VALUES (?, ?, ?)"
             params = (sender, recipient, message)
             self.execute_sql(sql, params)
             return "Message sent."
@@ -121,7 +121,7 @@ class DbBase:
     def read_messages(self, username):
         try:
             self.connection = sqlite3.connect(self.db_name)
-            sql = "SELECT sender, message FROM UsersMessages WHERE recipient = %s"
+            sql = "SELECT sender, message FROM UsersMessages WHERE recipient = ?"
             params = (username,)
             cursor = self.connection.cursor()
             cursor.execute(sql, params)
@@ -135,7 +135,7 @@ class DbBase:
     def show_all_messages(self, recipient):
         try:
             self.connection = sqlite3.connect(self.db_name)
-            sql = "SELECT sender, message FROM UsersMessages WHERE recipient = %s"
+            sql = "SELECT sender, message FROM UsersMessages WHERE recipient = ?"
             params = (recipient,)
             with self.connection.cursor() as cursor:
                 cursor.execute(sql, params)
