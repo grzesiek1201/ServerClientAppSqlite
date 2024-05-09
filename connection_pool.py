@@ -1,16 +1,16 @@
-import psycopg2
-from psycopg2 import Error
+import sqlite3
 import queue
 import threading
 import time
 
 
 class ConnectionPool:
-    def __init__(self, max_connections=100):
+    def __init__(self, max_connections=100, db_path=r"C:\Users\gzywi\PycharmProjects\ServerClientApp\sqlite_db.db"):
         self.max_connections = max_connections
         self.connection_lock = threading.Lock()
         self.current_connections = 0
         self.released_connections = 0
+        self.db_path = db_path
         self.initialize_connections()
 
     def initialize_connections(self):
@@ -23,16 +23,9 @@ class ConnectionPool:
 
     def create_connection(self):
         try:
-            connection = psycopg2.connect(
-                host="localhost",
-                user="postgres",
-                password="postgres",
-                dbname="postgres",
-                port=5433,
-                client_encoding="utf-8"
-            )
+            connection = sqlite3.connect(self.db_path)
             return connection
-        except (Exception, Error) as e:
+        except (Exception) as e:
             print("Error creating connection:", e)
             return None
 
@@ -46,9 +39,9 @@ class ConnectionPool:
                         return None
                     if self.connection_pool.empty():
                         self.add_connection()
-                connection = self.connection_pool.get_nowait()
-                self.current_connections += 1
-                return connection
+                    connection = self.connection_pool.get_nowait()
+                    self.current_connections += 1
+                    return connection
             except queue.Empty:
                 print("No available connections in the pool. Retrying...")
                 retries += 1
@@ -73,19 +66,6 @@ class ConnectionPool:
                 self.current_connections -= 1
                 self.released_connections += 1
 
-    def remove_inactive_connections(self):
-        with self.connection_lock:
-            removed_count = 0
-            while self.current_connections > 10:
-                try:
-                    connection = self.connection_pool.get_nowait()
-                    connection.close()
-                    removed_count += 1
-                    self.current_connections -= 1
-                except queue.Empty:
-                    break
-            self.released_connections += removed_count
-
     def stop(self):
         with self.connection_lock:
             while not self.connection_pool.empty():
@@ -103,14 +83,6 @@ class ConnectionPool:
                 f"Connections in queue: {queue_size}. "
                 f"Active connections: {active_connections}. Released connections: {released_connections}.")
 
-    def destroy_error_connections(self):
-        with self.connection_lock:
-            while not self.connection_pool.empty():
-                connection = self.connection_pool.get_nowait()
-                connection.close()
-                self.current_connections -= 1
-            print("Destroyed connections with errors.")
-
 
 if __name__ == "__main__":
-    pool = ConnectionPool(max_connections=100)
+    pool = ConnectionPool(max_connections=100, db_path=r"C:\Users\gzywi\PycharmProjects\ServerClientApp\sqlite_db.db")  
